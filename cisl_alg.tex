@@ -1,0 +1,387 @@
+\section*{Factorization}
+\begin{defn}[Factorization]
+Given a number $N$, find a number $r\in \mathbb{Z}_N$ such that $r|N$ and $r$ is not a unit.
+\end{defn}
+%formulation - given number $N = \prod_i = p_i^{e_i}$, $p_i$ primes, $e_i \in \N$ find number $r: r|N$, $r$ is not a unit.
+
+\begin{algorithm}\label{algo:trial}
+    \caption{Trial division ($O(\sqrt{N})$)}
+    \KwData{$N$ composite number}
+	\KwResult{$r$ non-trivial divisor of $N$}
+	$i=2$\;
+    \While{$i \leq \sqrt{N}$}{
+		\If{$i|N$}{break\;}
+	$i$++\;
+}
+\Return $i$
+\end{algorithm}
+
+%\subsection*{Trial division}
+%try to divide by all numbers (primes) up to $\sqrt{N}$ - complexity $O(\sqrt{N})$
+
+\subsection*{Pollard's rho}
+\begin{itemize}
+	\item complexity $O(\sqrt{p})$ - $p$ is the smallest factor of $N$
+	\item used to factor ninth Fermat number ($2^{2^9}+1$)
+    \item generate a pseudorandom sequence $x_i$ mod $N$ - $x_0, g(x_0), g(g(x_0))....$ ($g$ is most commonly $x^2 +1$ mod $N$, or $x^2 -1$ mod $N$)
+    \item "rho" shape -- $M$ -- preperiod, $T$ -- period
+    \item the sequence is closely connected to another sequence: $x_i$ mod $p$
+    \item by birthday paradox, there should be a collision (cycle) in $x_i$ mod $p$ in $O(\sqrt{p})$ steps
+    \item if the collision is in $x_i$ mod $p$ and not in $x_i$ mod $N$, then a factorization is found
+    \item cycle is then found by Floyd, or Brent cycle finding algorithm
+    \item Floyd's algorithm (tortoise and hare)
+	\item utilizes that $\exists i: x_i=x_{2i}$ ($i = T \lceil \frac{M}{T} \rceil $ if $M>0$, else $i = T$)
+	\item $i\leq T+M$
+	\item algorithm:
+    \begin{itemize}
+    	\item compute two sequences: $x_i$, $y_i$
+		\item $x_0 = y_0$
+		\item $x_{i+1} = g(x_i)$ (tortoise) $y_{i+1} = g(g(y_i))$ (hare)
+		\item after each step compute $gcd(|x_i - y_i|, N)$ - if $gcd \neq 1, N$ - success, if $gcd = N$ - try again with different settings
+	\end{itemize}
+	\item Brent's algorithm
+	\item $l(i) = 0$ if $i = 0$, else $2^{\lfloor log_2(i)\rfloor}$
+	\item utilizes that $\exists i: x_{l(i)-1}=x_i$
+	\item algorithm:
+	\begin{itemize}
+		\item compute one sequence: $x_i$ (uses $y_i$, but no need to compute it)
+		\item compares $x_{2^i-1}$ with $x_j$ for all $2^i\leq j \leq 2^{i+1}-1$
+		\item $x_0 = y_0$
+		\item $x_{i+1} = g(x_i)$
+		\item if $i+1$ is a power of two: $y_{j+1} = x_{i}$, $x_{i+1} = g(x_i)$
+	\end{itemize}
+	\item this way it is too slow (too many iterations)
+	\item $\exists i: y_i = y_{l(i)-1}$ and $3/2 l(i)\leq i < 2l(i)$
+	\item smallest such $i = 2^{\lceil log_2(max(M+1,T))\rceil} + T\lceil\frac{l(M)+1}{T}\rceil-1$ if $M>0$ or $T>1$, else $i=3 $
+	\item now using Brent's algorithm should be about $36\%$ faster than Floyd's (in one step computing only one evaluation of g)
+	\item another speedup - instead of gcd in every step, multiply $x_i - y_i$ together mod $N$, and then every 100 (or other number) steps compute gcd (gcd the slowest part of the algorithm) (if fail (in 100 steps combines multiple factor - try last 100 steps properly))
+\end{itemize}
+
+\subsection*{Pollard's p-1}
+\begin{defn}[power/smooth]~\\
+	$B\in\N,\,n\in\N$ is $B$-smooth $\Leftrightarrow \forall p\in\mathbb{P}:p|n\Rightarrow p\leq B$\\
+	$B\in\N,\,n\in\N$ is $B$-powersmooth $\Leftrightarrow \forall p\in\mathbb{P}\forall a \in\N:p^a|n\Rightarrow p\leq B$\\
+\end{defn}
+\[
+	\text{Largest $B$-powersmooth number }e_B:=\text{NSN}(1,\dots, B)]=\prod_{p\leq B;p\in\mathbb{P}}p^{\lfloor\text{log}_pB\rfloor}.
+\]
+
+If $N$ composite, $p|N$ such that $p-1$ is $B$-powersmooth then
+\[
+	\forall a \in\Z:NSD(a,p)=1 \Rightarrow a^{p-1}\equiv_p1 \Rightarrow a^{e_B}\equiv_p 1
+\]
+
+and thus GCD$(a^{e_B}-1,N)>1$.
+
+\begin{algorithm}
+    \caption{Pollard $(p-1)$ ($O(B\text{log}B\text{log}^2N)$)}
+    \KwData{$N$ composite, factor base $p_1,\dots,p_n\leq B$}
+    \KwResult{non-trivial divisor or failure}
+	$a\in\Z_N\backslash\{0,1\}$; //$a=2$\\
+	$d=NSD(a,N)$\;
+	\If{$d>1$}{\Return $d$\;}
+	\For{$i=1$ to $k$}{
+		$e=\lfloor\text{log}_{p_i}B\rfloor$\;
+		$a=a^{p_i^e}$ mod $N$\;
+		$d=GCD(a-1, N)$\;
+		\If{$d>1$}{\Return $d$\;}
+	}
+	\If{$d=1$ or $d=N$}{\Return fail\;}
+	\Else{\Return d\;}
+    \vspace{0.2cm}
+\end{algorithm}
+
+$N$ is composite, $p|N$ and $p=c.p_1$ for $c$ $B$-powersmooth and $p_1 \in \mathbb{P}, B_1\leq p_1\leq B_2$.
+\[
+	a \in \Z_N: a^{e_{B_1}}\text{ mod }N=:b; GCD(b-1,N)=1,
+\]
+\[
+	\forall q \in \mathbb{P} \cap\{B_1+1,\dots,B_2\}: GCD(b^q-1,N)=?
+\]
+We'll exploit the fact that differences between two consecutive primes are rather small.
+
+\begin{algorithm}
+    \caption{2-phase Pollard $(p-1)$}
+    \KwData{$N$ composite, factor base $p_1,\dots,p_n\leq B$, $q_1,\dots,q_l \in \{B_1+1,\dots,B_2\}$, $d_i=q_{i+1}-q_i$}
+    \KwResult{non-trivial divisor or failure}
+	$a\in\Z_N\backslash\{0,1\}$\;
+	$b=a^{e_{B_1}}$ mod $N$\;
+	\If{$GCD(b-1,N)>1$}{goto label\;}
+	\For{$d_i$}{$b_d=b^{q_i}$\;}
+	$b=b^{q_1}$ mod $N$\;
+	\For{$i=1$ to $l-1$}{
+		\If{$GCD(b-1, N)>1$}{break\;}
+		$b=b.b_{d_i}$\;
+	}
+	label:
+	\If{$GCD(n-1,N)\neq 1,N$}{\Return $GCD(b-1, N)\;$}
+	\Else{\Return fail\;}
+    \vspace{0.2cm}
+\end{algorithm}
+
+%\begin{itemize}
+%	\item 1-phase
+%	\begin{itemize}
+%	\item effective for numbers of special form
+%	\item finds factors $p$, such that $p-1$ is powersmooth ($c$ is B--powersmooth if $\forall p^a | c \implies p^a \leq B$)
+%	\item $e_B = \prod_{p\in \mathbb{P}, p \leq B} p^{\lfloor log_p(B) \rfloor} $ -- the biggest $B$--powersmooth number (if $c$ is $B$--powersmooth, then $c|e_B$)
+%	\item if $p|N$, $p$ $B$--powersmooth, $gcd(a,p)=1$, then $a^{p-1} = 1$ mod $p \implies a^{e_B-1} = 1$ mod $p$
+%	\item algorithm iteratively computes $a^{e_B-1}$ for some $a \in \Z_N$ (prime by prime), and checks whether $gcd(a^{\prod p_i^{e_i}}-1, N) \neq 1, N $
+%	\end{itemize}
+%	\item 2-phase
+%	\begin{itemize}
+%		\item $B_1 \leq B_2$, $p-1 = cp_0$, $c$ is $B_1$--powersmooth, $p_0$ is prime $\leq B_2$.
+%		\item first phase -- compute $b =a^{e_B-1}$ mod $N$
+%		\item if $b =N$ -- fail, if $\neq1,N$ return factor, if $=1$ continue
+%		\item for $B_1 \leq$ primes $\leq B_2$ (primes $q_i$) compute differences of primes $d_i = q_i+1 - q_i$
+%		\item for all $d_i$ compute $b^{d_i}$ ($d_i$ usually small)
+%		\item compute $b_0 = b^{q_1}$ and check $gcd(b_0-1,N)$
+%		\item check for all $i$ compute and check (gcd) $b_i=b_{i-1}*b^{d_i}$ (checks all $a^{e_B*q_i}$)
+%	\end{itemize}
+%	\item complexity $O(Blog(B)log(N))$
+%\end{itemize}
+
+\subsection*{ECM}
+\begin{itemize}
+	\item similar to $p-1$ method -- groups $\Z^*_p$ is substituted by elliptic curve group
+	\item elliptic curve: $y^2 = x^3 + ax +b$ -- Weierstrass form (field characteristic $\neq 2,3$ -- requires $gcd(6, N) = 1$)
+	\item addition of $P,Q = R$ on curve -- third point intersecting curve on line given by $P,Q$ is reflected around $x$ axis (or point at infinity -- $y = \infty$)
+	\item formulas(nontrivial):
+	\begin{itemize}
+		\item $P \neq Q$: $s = \frac{y_P-y_Q}{x_P-x_Q}$, $x_R = s^2-x_P-x_Q$, $y_R = s(x_P-x_R)-y_P$
+		\item $x_R$ can be deduced by putting secant line and elliptic curve into the same equation and Vieta's formula, $y_R$ is computed from line definition 
+		\item $P = Q$: $s = \frac{3x_P^2+a}{2y_P}$, $x_R = s^2-2x_P$, $y_R = s(x_P-x_R)-y_P$
+		\item formula can be deduced by taking the homogeneous polynomial of elliptic curve, and doing implicit derivation
+	\end{itemize}
+	\item on an "elliptic curve modulo $N$" we try to compute $e_B P$ for some point $P$ if we fail -- we could not find an inverse mod $N$ -- we have a factor
+	\item useful for finding "small" ($ \leq 10^{30} $) factors
+	\item starting point 
+	\begin{itemize}
+		\item choose random curve, choose $y_P$, compute $x_P$ as a square root mod $N$ X as hard as factorization
+		\item $b = 1$, $P = [0,1]$
+		\item random point on random curve -- choose $x_P,y_P,a$ randomly, compute $b$
+	\end{itemize}
+	\item speedup -- parallel computation on multiple curves
+	\begin{itemize}
+		\item need curves $y^2 = x^3+a_ix+1$ (different curves, different $a_i$) $P_i=[0,1]$
+		\item prime power by prime power we compute $e_BP$ in a parallel way
+		\item speedup -- parallel inverse mod $N$ -- 1 gcd, 3(number of curves) multiplications mod $N$
+		\item input $d_i$ $(1 \leq i \leq M)$ -- values to be inverted
+		\item $c_i = \prod_{j\leq i} d_j$
+		\item find $u,v$: $uc_M+vN=1$
+		\item for all i: $b_i = uc_{i-1}$, $u = ud_i$ ($b_i$ are inverses)
+		\item if algorithm fails, we found factor
+	\end{itemize}
+	\item complexity $L_p[1/2,\sqrt{2}]$
+\end{itemize}
+
+\subsection*{Dixon's factorization}
+\begin{itemize}
+	\item basis for the following two algorithms
+	\item finding relations $(x,y) \in \Z$: $x^2\equiv y$ mod $N$
+	\item try to find relations such that $\prod y_i = y^2 \in \Z$
+	\item using $x^2=x_1^2x_2^2...x_n^2 \equiv y^2$ mod $N$ try to factor $N$ ($(x+y)(x-y)$ -- hopefully get nontrivial decomposition)
+	\item choose a factor base $\{-1,2,...p_{max}\}$ of size $|B|$, generate relations $(x,y)$, and try to factor $y$ in factor base -- keep smooth relations (factorization successful)
+	\item repeat until $<|B|$ ($=t$) smooth relations
+	\item generate a $t\times |B|$ matrix of exponents mod 2  
+	\item solve it -- find a linear combinations of rows that gives zero -- product of such $y_i$ is a square
+\end{itemize}
+
+
+\subsection*{CFRAC}
+\begin{itemize}
+	\item uses continuous fractions expansion of $\sqrt{N}$ to generate relations
+	
+	\item continued fraction
+	\begin{itemize}
+		\item generic continued fraction $[x_0,x_1...x_n]\in \Q(x_0,...x_n)$
+		\item definition: $P_n$, $Q_n$ $\in \Z[x_1,..x_n]$ polynomial coefficients from $\Z_2$, $P_{-2} = 0, P_{-1} = 0, Q_{-2}=1, Q_{-1} = 0, P_n = x_nP_{n-1} + P_{n-2}, Q_n = x_nQ_{n-1} + Q_{n-2}$
+		\item $[x_0,...x_n] = \frac{P_n}{Q_n}$ for $n \geq 0$
+		\item proof of the above (idea) -- rewriting $x_n = x_n + 1/x_{n+1}$ and basic rewriting of expressions
+		\item Lemma: $\forall n \geq -1$ $P_nQ_{n-1}-P_{n-1}Q_n =(-1)^{n+1}$
+		\item proof: by induction $n = -1$ easy, then $\begin{pmatrix}
+		x_0 & 1 \\ 1 & 0
+		\end{pmatrix}...\begin{pmatrix}
+		x_n & 1 \\ 1 & 0
+		\end{pmatrix} = \begin{pmatrix}
+		P_n & P_{n-1} \\ Q_n & Q_{n-1}
+		\end{pmatrix}
+		,$ and taking determinants completes the proof
+		\item Lemma: define $p_n = P_n(a_0,...a_n), q_n = Q_n(a_0,...a_n)$ -- values of $P_n, Q_n$ at $(a_0...a_n)$, then sequence $(\frac{p_n}{q_n})$ converges
+		\item proof: $p_nq_{n-1}-p_{n-1}q_n=(-1){n+1}$ is equivalent to $\frac{p_n}{q_n}-\frac{p_{n-1}}{q_{n-1}} = (-1)^{n+1}\frac{1}{q_nq_{n-1}}$ -- $q_n$ is increasing, so the sequence converges (Leibniz criterion?)
+		\item definition: value of continued fraction $[a_0...]$ is $\lim_{n\rightarrow \infty}\frac{p_n}{q_n}$, $\frac{p_n}{q_n}$ is called the $n$--th convergent of $[a_0...]$
+		\item every $\alpha \in \R \setminus \Q$ can be expressed as continued fraction -- proof: just start building the fraction ($a_0 = \lfloor \alpha \rfloor$, $\alpha_1 = (\alpha-a_0)^{-1}$, $a_1 =\lfloor \alpha_1 \rfloor $...)
+	\end{itemize}
+	
+	\item continued fraction expansion of $\sqrt{N}$
+	\begin{itemize}
+		\item if $N$ is not a square, then $\sqrt{N}$ has infinite expansion as continued fraction
+		\item lemma: $N\in\N \forall n \exists R_n, S_n \in \Z (S_n \neq 0)$: $\alpha_n = \frac{R_n +\sqrt{N}}{S_n}$ ($\alpha_n$ as defined above), where $R_0 = 0, S_0 = 1$, $R_{n+1} = a_nS_n-R_n$, $S_{n+1} = \frac{N - R^2_{n+1}}{S_n}$
+		\item proof (by induction): $n=0$ holds, then rewrites $\alpha_{n+1} = (\frac{R_n+\sqrt{N}}{S_n} -a_n)^{-1}$, and then simple algebraic rewritings
+		\item still need to prove that $S_n \in \Z$ (induction): $n=0$ ok, need to show $S_n | N -R_{n+1}^2$ $N-R_{n+1}^2 = N-(a_nS_n-R_n)^2 = N-R_n^2 - S_n(...)$ -- sufficient to show, that $S_n | N -R_{n}^2$, $N-R_n^2 = S_nS_{n-1}$ (definition of $S_n$), therefore if $S_0...S_n\in\Z$ then $S_{n+1}\in\Z$
+	\end{itemize}
+	
+	\item CFRAC relations
+	\begin{itemize}
+		\item lemma: $\sqrt{N} \notin \Q$, then $\forall n\in\N_0 p^2_{n-1}-Nq^2_{n-1}=(-1)^nS_n$ ($p_i,q_i,S_i$ defined above)
+		\item proof: $\sqrt{N} = [a_0,...,\alpha_n]$ ($\alpha_n$ -- plugging the residual irrational value into the continued fraction) = $\frac{\alpha_n p_{n-1} + p_{n-2}}{\alpha_n q_{n-1} + q_{n-2}} = \frac{\frac{R_n+\sqrt{N}}{S_n}p_{n-1} + p_{n-2}}{\frac{R_n+\sqrt{N}}{S_n}q_{n-1} + q_{n-2}} = \frac{R_n p_{n-1}+\sqrt{N}p_{n-1} + p_{n-2}S_n}{R_n q_{n-1}+\sqrt{N}q_{n-1} + q_{n-2}S_n}$
+		\item this gives $(R_n p_{n-1} + p_{n-2}S_n)1+p_{n-1}\sqrt{N} = Nq_{n-1}1+(R_n q_{n-1}+q_{n-2}S_n)\sqrt{N}$, 
+		\item as $1$ and $\sqrt{N}$ are $\Q$--linearly independent, we get $p_{n-1} = R_{n}q_{n-1}+q_{n-2}S_n$ (multiply by $p_{n-1}$) and $Nq_{n-1} = R_{n}p_{n-1}+p_{n-2}S_n$ (multiply by $q_{n-1}$)
+		\item by summing the multiplied equations we get: $p^2_{n-1}-Nq^2_{n-1} = S_{n}(p_{n-1}q_{n-2}-p_{n-2}q_{n-1}) = (-1)^nS_n$ (by definition)
+	\end{itemize}
+	\item CFRAC
+	\begin{itemize}
+		\item choose a factor base $\{-1,2,3...p_max\}$
+		\item generate continued fraction convergents of $\sqrt{N}$, try to factor $S_n$ in the factor base, if so, add relation $(p_{n-1}, (-1)^nS_n)$
+		\item afterwards linear phase and factorization
+	\end{itemize}
+	
+	\item Pell's equation
+	\begin{itemize}
+		\item want integral solutions of $x^2-Ny^2 = 1$
+		\item Prihoda said -- for state exams you need to know the following: solutions exists, and can be found using continuous fractions 
+	\end{itemize}
+\end{itemize}
+
+\subsection*{Quadratic sieve} (tonelli-shanks)
+
+%\begin{algorithm}
+%	\caption{Tonelli-Shanks}
+%	\SetKwInOut{Input}{input}
+%	\SetKwInOut{Output}{output}
+%	\Input{$p\in\mathbb{P},\ a\in\Z_p^*,\ p-1=l2^e,\,e$ odd}
+%	\Output{$x\in\Z_p^*:x^2=a$ mod $p$}
+%	label:\\
+%	$z_0\in\Z_p^*$ random\;
+%	$w=z_0^{\frac{p-1}{2}}$\;
+%	\If{$w=1$}{GOTO label\;}
+%	$z:=z_0^l$ mod $p$\;
+%	$y=z;\ r=e;\ b=a^l$ mod $p;\ x=a^{\frac{l+1}{2}}$\;
+%	label2:\\
+%	find $m:b^{2^m}\equiv_p 1$\;
+%	\If{$m=0$}{\Return $x$}
+%	\If{$m=r$}{\Return fail}
+%	$t=y^{r-m-1}$ mod $p$; $r=m$\; $y=t^2$ mod $p$; $x=xt$ mod $p$; $b=by$ mod $p$\;
+%	GOTO label2\;
+%	\vspace{0.2cm}
+%\end{algorithm}
+
+\begin{itemize}
+	\item Tonelli--Shanks algorithm (square root mod odd $p$)
+	\item idea:
+	\begin{itemize}
+		\item $\Z^*_p \approx \Z_{p-1} \approx \Z_{2^e} \times \Z_l$ ($l$ odd) 
+		\item we have (but cannot compute) $\phi: \Z_p^* \rightarrow \Z_{2^e} \times \Z_l$
+		\item $z\in\Z_p^*: o(z) = 2^l \Leftrightarrow \phi(z)=(\alpha,0)$ $\alpha$ even
+		\item $a\in\Z_p^*:$ $a$ is a square $\Leftrightarrow \phi(a) = (\alpha,\beta)$ $\alpha$ odd
+		\item $\phi(a^l) = (\alpha,0)$ $\alpha$ odd, $\phi(z) = (\beta,0)$ $\beta$ even
+		\item $k: k\beta=\alpha$ mod $2^e$ $k$ must be even
+		\item $a^l=z^k \Rightarrow a = a^{l+1}z^{-k}$ -- power are even, can divide by 2
+		\item $z$ can be found as a $l$--th power of a quadratic nonresidue (can be checked easily)
+		\item finding $k$ is finding a discrete logarithm in $\Z_{2^e}$ -- Pohlig--Hellman
+	\end{itemize}
+	\item Quadratic sieve
+	\begin{itemize}
+		\item introduces sieving part into Dixon's factorization
+		\item generating relations: $Q(x) = (x-\lfloor \sqrt{N} \rfloor )^2-N$ -- relation $((x-\lfloor \sqrt{N} \rfloor), Q(x)$
+		\item take factor base ($p_{max} \approx e^{1/2\sqrt{ln(N)lnln(N)}}$), sieving interval $\{-M...M\}$ ($M \approx e^{\sqrt{ln(N)lnln(N)}}$)
+		\item trying to find $x \in \{-M...M\}$: $Q(x)$ can be factored in factor base
+		\item sieving removes operations $Q(x) div\ p$ if $p \nmid Q(x)$ -- using Tonelli--Shanks algorithm finds solution to $Q(x)\equiv0$ mod $p$
+		\item algorithm:
+		\begin{itemize}
+			\item choose factor base $B$, size of sieving interval $M$
+			\item for $i \in \{-M...M\}$: $\{P[i]=Q(i)\}$
+			\item for all primes in factor base: 
+			\begin{itemize}
+				\item find $C = \{c\in \Z_p | Q(c) = 0$ mod $p\}$ -- using Tonelli--Shanks algorithm
+				\item for $c \in C$ : for $i \in \{-\lceil M/p \rceil,  \lceil M/p \rceil\}$: $P[c+ip] /= p^{v_p(P[c+ip)}$ (divide by highest possible power of $p$)
+				\item this is the speedup due to sieving
+			\end{itemize}
+			\item for $i\in \{-M...M\}$ if $P[i] = \pm 1$ add relation ($i-\lfloor \sqrt{N} \rfloor, Q(i) $ mod $N$)
+			\item linear phase and solution
+		\end{itemize}
+		
+	\end{itemize}
+	
+	
+\end{itemize}
+
+
+\section*{Discrete logarithm}
+formulation - given group $G$, its generator $g$ and $h\in G$, find $x\in\N : g^x = h$
+
+in general, the problem is hard (solution require time $O(\sqrt{|G|}))$), however for some groups more efficient algorithms exist - ($\Z_n, +$) - reduces to inverting - euclidean algorithm, index calculus where applicable
+
+\subsection*{Bruteforce}
+\begin{itemize}
+	\item try all possibilities
+	\item item complexity $O(|G|)S$
+\end{itemize}
+
+\subsection*{Pohlig-Hellman reduction}
+$|G| = \prod p_i^{e_i} \Rightarrow$ we may solve the problem in subgroups and then use CRT to get the solution.
+
+\begin{algorithm}
+	\caption{Pohlig-Hellman: one subgroup}
+	\SetKwInOut{Input}{input}
+	\SetKwInOut{Output}{output}
+	\Input{$G$ of order $n=p^{e}$, $g\in G$ generator and $h \in G$}\Output{$x\in\Z_n:g^x=h$}
+	$x_0=0$\;
+	$\gamma = g^{p^{e-1}}$\;
+	\For{$k\in\Z_e$}{
+		$h_k=(g^{-x_k}h)^{p^{e-1-k}}$\;
+		find $d_k$: $\gamma^{d_k}=h_k$\;
+		$x_{k+1}=x_k+p^kd_k$
+	}
+	\Return $x_e$
+    \vspace{0.2cm}
+\end{algorithm}
+
+Use this approach for all primes with values $g_i=g^{n/p_i^{e_1}}$ and $h_i=h^{n/p_i^{e_i}}$, combine through CRT.
+
+\subsection*{Baby-step, giant-step}
+Time-memory tradeoff -- $O(\sqrt{|G|})$ memory, $O(\sqrt{|G|})$ time.
+
+\begin{algorithm}
+	\caption{Baby-step, giant-step}
+	\SetKwInOut{Input}{input}
+	\SetKwInOut{Output}{output}
+	\Input{Cyclic group $G$ of order $n$, $\alpha$ generator, $\beta\in G$}
+	\Output{$x:\alpha^x=\beta$ or fail}
+	$m=\lceil\sqrt{n}\rceil$\;
+	\For{$0\leq j< m$}{
+		$T[\alpha^j]=j$\;
+	}
+	$a=\alpha^{-m}$\;
+	$\gamma = \beta$\;
+	\For{$0\leq i < m$}{
+		\If{$\gamma \in T$}{\Return $im+T[\gamma]$}
+		\Else{$\gamma=\gamma . a$}
+	}
+	\Return fail
+    \vspace{0.2cm}
+\end{algorithm}
+
+
+\subsection*{Index calculus}
+\begin{itemize}
+	\item only for some groups - needs decomposition into small elements (e.g. prime numbers))
+	\item multiple phases
+	\item 0. phase - choose a size of a factor base - $\{ -1, 2, 3, 5, ..., p_r\}$
+	\item 1. phase 
+	\begin{itemize}
+		\item find linear relations between elements of factor base, and power of the generator $g$ $(g^k$ mod $q = (-1)^{e_0}2^{e1}3^{e_2}...p_r^{e_r})$
+		\item exponents of the relations are saved as rows of an extended matrix ($k$ is right side)
+		\item find enough relations, so the matrix has full rank
+	\end{itemize}
+	\item 2. phase - using linear algebra transform the exponent matrix into row reduced echelon form - get logarithms of elements of factor base
+	\item 3. phase
+		\begin{itemize}
+			\item for different $s$ we try to decompose in the factor base $g^s h$ mod $q = (-1)^{f_0}2^{f_1}...p_r^{f_r}$
+			\item if we find a decomposition, then $x = f_0 log(-1) + f_1 log(2) + ... + f_r log(p_r) - s$
+		\end{itemize}
+	\item size of factor base is important - too small -> hard to find relations and 3. phase also hard
+	\item too big -$>$ 2. phase takes too long
+	\item expected time (assuming optimal size of factor base) $L_n[1/2,\sqrt{2}+o(1)]$
+	\item only the 3. phase depends on $h$ -$>$ for a given group $G$ and generator $g$ it is possible to precompute and store row reduced echelon exponent matrix and then compute logarithms quickly -> logjam attack on 512-bit Diffie-Hellmann 
+\end{itemize}

@@ -1,0 +1,379 @@
+\subsection*{Největší společný dělitel}
+
+\begin{algorithm}
+    \caption{Eukleidův algoritmus}
+    \KwData{$f,\ g$}
+    \KwResult{NSD$(f,g)$}
+    $a_0:=f,\ a_1:=g,\ i:=1$\;
+    \While{$a_i\neq 0$}{
+        $a_{i+1}:=a_{i-1}$ mod $a_1$\;
+        $i$++\;
+    }
+    \Return{$a_{i-1}$}
+    \vspace{0.2cm}
+\end{algorithm}
+
+Eukleidův algoritmus má dvě nevýhody -- koeficienty obvykle vycházejí velké a navíc je aritmetika nad podílovým tělesem pomalá. Naivním přístupem dostáváme sice složitost $O(mc(f)mc(g))$, nicméně reálně v Euklediově algoritmu dojde k exponenciálnímu nárůstu koeficientů v průběhu výpočtu. Proto musíme k výpočtu NSD přistupovat obezřetněji.
+
+\begin{defn}
+    Buď $f=\sum\limits_{i=0}^na_ix^i \in \mathcal{R}[x]$ polynom. Pak definujeme
+    \begin{itemize}
+        \item \textit{obsah} cont$(f)=$NSD$(a_0,a_1,\dots,a_n)$,
+        \item \textit{primitivní část} pp$(f)=\sum\limits_{i=0}^n\frac{a_i}{cont(f)}x^i$.
+    \end{itemize}
+    Polynom $f$ nazveme \textit{primitivní}, jestliže cont$(f)=1$.
+\end{defn}
+
+\begin{algorithm}
+    \caption{Generický algoritmus pro výpočet NSD}
+    \KwData{$f,\ g$}
+    \KwResult{NSD$(f,g)$}
+    $a:=\text{NSD}_\mathcal{R}(\text{cont}(f),\text{cont}(g))$\;
+    $b:=\text{NSD}_{\mathcal{R}[x]}(\text{pp}(f),\text{pp}(g))$\;
+    \Return{a.b}
+    \vspace{0.2cm}
+\end{algorithm}
+
+\begin{defn}[Pseudodělení]~\\
+    $f \text{ pdiv } g = \text{lc}(g)^{\text{deg}f-\text{def}g+1}f\text{ div }g$\\
+    $f \text{ pmod } g = \text{lc}(g)^{\text{deg}f-\text{def}g+1}f\text{ mod }g$
+\end{defn}
+
+\begin{defn}[Podobnost polynomů]
+    Řekneme, že polynomy $f,\,g \in \mathcal{R}$ jsou podobné ($f\sim g$), jestliže $\exists k,l \in \mathcal{R}: kf=lg$.
+\end{defn}
+
+\begin{defn}
+    \textit{Posloupností polynomiálních zbytků} (PRS) rozumíme každou posloupnost $f_1,f_2,\dots,f_k\in \mathbb{R}[x]$ splňující
+    \begin{enumerate}
+        \item $f_1,\dots,f_{k-1} \neq 0,\ f_k=0$
+        \item deg$f_i\geq$deg$f_{i-1}$
+        \item $f_{i+1} \sim (f_{i-1} \text{ pmod } f_i)$
+    \end{enumerate}
+\end{defn}
+
+\begin{claim}
+    Buď $\mathcal{R}$ gaussovský obor a $f_1,\dots,f_k$ nějaká PRS v $\mathcal{R}[x]$. Pak NSD$(f_1,f_2)\sim f_{k-1}$.
+    \begin{proof}
+        $\mathcal{Q}$ podílové těleso $\mathcal{R}$, z třetí vlastnosti PRS $f_{i+1}\parallel(f_{i-1} \text{ pmod } f_i) \parallel(f_{i-1} \text{ mod } f_i)$, tj. PRS simuluje, až na podobnost, chod Eukleidova algoritmu v $\mathcal{Q}[x]$, a tedy $f_{k-1}\sim\text{NSD}_{\mathcal{Q}[x]}(f_1,f_2)$.
+    \end{proof}
+\end{claim}
+
+\begin{algorithm}
+    \caption{NSD pomocí PRS}
+    \KwData{$f,\ g$ primitivní, def$f\geq$deg$g$}
+    \KwResult{NSD$(f,g)$}
+    $f_1:=f,\ f_2:=g,\ i:=2$\;
+    \While{$f_i\neq0$}{
+        $f_{i+1}=\frac{1}{\alpha_i+1}(f_{i-1} \text{ pmod } f_i)$\;
+        $i$++\;
+    }
+    \Return{pp$(f_{i-1})$}
+    \vspace{0.2cm}
+\end{algorithm}
+
+Nechť $\delta_i=\text{deg}f_i-\text{deg}f_{i+1}$, pak máme následující možnosti voleb $\alpha_i$:
+
+\begin{tabular}{lp{9cm}}
+    \textit{Eukleidovská PRS}    & $\alpha_{i+1}=1$\\
+    \textit{Primitivní PRS}     & $\alpha_{i+1}=\text{cont}(f_{i-1} \text{ pmod } f_i)$\\
+    \textit{Redukovaná PRS}     & $\alpha_3=1,\ \alpha_{i+1} = \text{lc}(f_{i-1})^{\delta_{i-2}+1},\, i\geq3$\\
+    \textit{Subrezultantová PRS}& $\alpha_3=1,\ \alpha_{i+1} = \text{lc}(f_{i-1})\beta^{\delta_{i-1}^{i-1}},\, i\geq3,$\\
+    & kde $\beta_2=\text{lc}(f_2)^{\delta_1},\ \beta_{i+1}=lc(f_{i+1})^{\delta_i}\beta_i^{1-\delta_i}$.
+\end{tabular}
+
+V praxi je Eukleidovská PRS ještě horší, než-li Eukleidův algoritmus, ovšem primitivní a redukovaná PRS se již dostávají do polynomiální složitosti (přesněji $O(n^4),\ n=\text{deg}f$), pro náhodné polynomy vychází redukovaná varianta cca o 20\% lépe.
+
+\begin{thm}\label{thm:nsd}
+    Buď $\mathcal{R}$ gaussovský obor, $\mathcal{Q}$ jeho podílové těleso, $\overline{\mathcal{Q}}$ jeho algebraický uzávěr a $f,g$ dva nekonstantní polynomy z $\mathcal{R}[x]$. Pak NTJE:
+    \begin{enumerate}
+        \item Polynomy $f,g$ jsou soudělné v $\mathcal{Q}[x]$
+        \item deg\,NSD$_{\mathcal{R}[x]}(f,g)>0$
+        \item $\exists u,v \in \mathcal{R}[x],\, \text{deg\,}u<\text{deg\,}f,\text{deg\,}v<\text{deg\,}g:uf+vg=0$
+        \item $f,g$ mají společný kořen v $\overline{\mathcal{Q}}$.
+    \end{enumerate}
+    \begin{proof}
+        $1\Leftarrow2$ z Gaussova lemmatu (dělitelnost v $\mathcal{Q}[x]$ implikuje dělitelnost v $\mathcal{R}[x]$)
+
+        $1\Leftrightarrow4$ zřejmé
+
+        $1\Rightarrow3$ $d=NSD(f,g),\ u:=g/d,\ v=f/d$
+
+        $3\Rightarrow1$ $uf=gv \Rightarrow f|v\, \lor\, f|g \Rightarrow f|g\ (\text{deg}\,v<\text{deg}\,f)$
+    \end{proof}
+\end{thm}
+
+\begin{defn}[Sylvesterova matice]
+    Buď $f=\sum_{i=0}^na_ix^i,\ g=\sum_{i=0}^mb_ix^i$ jsou dva nekonstatní polynomy z $\mathcal{R}[x]$. \textit{Sylvesterovou matici} $M(f,g)$ rozumíme čtvercovou matici velikosti $m+n$ nad $\mathcal{R}$:
+
+    $M(f,g)=\left(
+    \begin{array}{cccccccc}
+        a_n & 0 & \dots & 0 & b_m & 0 & \dots & 0 \\
+        a_{n-1} & a_n & & \vdots & b_{m-1} & b_m & & \vdots \\
+        \vdots & a_{n-1} & & 0 & \vdots & b_{m-1} & & 0 \\
+        a_0 & \vdots & & a_n & b_0 & \vdots & & b_m \\
+        0 & a_0 & & a_{n-1} & 0 & b_0 & & b_{m-1} \\
+        \vdots & 0 & & \vdots & \vdots & 0 & & \vdots \\
+        \vdots & \vdots & & \vdots & \vdots & \vdots & & \vdots \\
+        0 & 0 & \dots & a_0 & 0 & 0 & \dots & b_0 \\
+    \end{array}
+    \right)$
+
+    Determinant této matice nazvěme \textit{rezultant polynomů $f,g$} (res$(f,g)$).
+\end{defn}
+
+\begin{thm}[Sylvesterovo kritérium]
+    Buď $\mathcal{R}$ gaussovský, $\mathcal{Q}$ jeho podílové těleso a $f,g \in \mathcal{R}[x]$ dva nekonstatní polynomy. Pak platí:
+    \[
+        \text(res)(f,g)=0 \Leftrightarrow f,\,g\text{ jsou soudělné v } \mathcal{Q}[x].
+    \]
+    \begin{proof}
+        Řešení M(f,g) odpovídá 3. bodu Věty \ref{thm:nsd} (po roznásobení dostaneme konvoluci).
+    \end{proof}
+\end{thm}
+
+Z Cramérova pravidla (a rozvoje podle posledního sloupce) jsme dokonce schopni dokázat, že
+\[
+    \exists u,v \in \mathcal{R}[x],\, \text{deg\,}u<\text{deg\,}f,\text{deg\,}v<\text{deg\,}g:uf+vg=\text{res}(f,g).
+\]
+
+Tuto úlohu je též možno řešit nad konečnými tělesy. Buďto tak, že budeme počítat modulo $p \in \mathbb{P} >\,$NSD$_\mathbb{Z}(lc(f),lc(g)).$LM$(f,g)$ (Landau-Mignottova mez). Tato mez je ovšem značně neoptimální a proto by bylo vhodné seskládat NSD přes CRT (stačí aby součin prvočísel překročil tuto mez). Komplikací je, že potřebujeme jen \textit{použitelná} prvočísla ($p\not|$NSD$_\mathbb{Z}(lc(f),lc(g))$) a šťastná (stupeň NSD v celých číslech i konečném tělese je stejný), tzn. kdykoliv nám vzroste stupeň NSD po přidání prvočísla, musíme započíst výpočet znovu.
+
+\subsection*{Faktorizace polynomů nad konečými tělesy}
+\begin{defn}[Bezčtvercový polynom]
+    $\mathcal{R}$ gaussovský, $f\in\mathcal{R}[x_1,x_2,\dots,x_n]$ bezčtvercový polynom $\Leftrightarrow f$ není násobek čtverce nekonstatního polynomu.
+\end{defn}
+
+\begin{defn}[Bezčtvercový rozklad]
+    $\mathcal{R}$ gaussovský, $f\in\mathcal{R}[x_1,x_2,\dots,x_n]$, pak $f=h_1h_2^2\dots h_k^k$ je bezčtvercový rozklad $\Leftrightarrow \forall i\neq j:h_i,h_j$ nesoudělná a $h_i$ bezčtvercová.
+\end{defn}
+
+\begin{lemma}
+    Buď $\mathbb{F}_q$ konečné těleso charakteristiky $p$, $f \in \mathbb{F}_q[x]$ t.ž. $f'=0$. Pak $\exists g\in\mathbb{F}_q[x]:f=g^p$.
+\end{lemma}
+
+\begin{thm}
+    $f \in \mathcal{F}_{p^n}[x]$ primitivní polynom
+    \begin{enumerate}
+        \item $f$ bezčtvercový $\Leftrightarrow \text{NSD}(f,f')=1$
+        \item $f=\Pi_1^nh_i^i$ bezčtvercový rozklad $f$, pak 
+        \[
+            \text{NSD}(f,f')=\Pi_{i=2,p\nmid i}h_i^{i+1}\Pi_{i=1,p|i}h_i^i.
+        \]
+    \end{enumerate}
+    \begin{proof}
+        1 $\Leftarrow$ : $f=g^2h\Rightarrow f'=2gg'h+g^2h'\Rightarrow g|$NSD$(f,f')$.
+
+        1 $\Rightarrow$ : $\exists$ irreducibilní $\pi \in \mathbb{F}_{p^n}[x]:\pi|f \land \pi | f'$, deg$\pi>1$ ($f$ primitivní). Takže platí $f=\pi g \Rightarrow f'=\pi'g+\pi g \Rightarrow \pi | \pi'$ (spor s lemmatem) nebo $\pi | f'$ (spor s bezčtvercovostí).
+
+        2 : $f'=\sum\limits_{j,p\nmid j}h_j^{j-1}j\Pi_{i\neq j}h_i^ih_j',\ g:=\Pi_{p\nmid i} h_i^{i-1}\Pi_{p|j}h_j^j|$NSD$(f,f')$. Potřebujeme ověřit, že NSD$(\sum\limits_{p\nmid j} h_j'j\Pi_{i\neq j,p\nmid i} h_i,\Pi h_i)$ je nesoudělné s NSD$(f,f')$. Pro spor nechť existuje $\pi \in \mathbb{F}_{p^n}[x]$ ireducibilní, které dělí oba polynomy, tj. $\exists!i:\pi|h_i$ a z druhé strany $\pi|h_i'$, což je dle 1 spor s bezčtvercovostí $h_i$.
+    \end{proof}
+\end{thm}
+
+\begin{algorithm}
+    \caption{bezčtvercová faktorizace $O($deg$\,(f)^3l^2(q))$}
+    \KwData{$f\in\mathbb{F}_q[x]$ primitivní, nekonstantní}
+    \KwResult{bezčtvercová faktorizace $f=\Pi h_i^i$}
+    \If{$f'=0$}{goto 3\;}
+    $f_1=$NSD$(f,f')$; $g_1=f/f_1$; $j=1$\;
+    
+    \While{deg$\,g_j>0$}{
+        $g_{i+1}=$NSD$(g_j,f_j)$\;
+        $f_{j+1}=f_j/g_{j+1}$\;
+        $h_j=g_j/g_{j+1}$\;
+        $j$++\;
+        $f=f_j$
+    }
+
+    finish:\\
+    \If{deg$f\neq0$}{$h_p,\dots,h_{l(p)}=$recur$(\sqrt[p]{f})$}
+    \Return $\frac{u}{\Pi h_i^i}h_1,h_2,\dots,h_{j-1}$
+    \vspace{0.2cm}
+\end{algorithm}
+
+\begin{claim}
+    $f\in\mathbb{F}_q[x]$ monický, bezčtvercový, nekonstantní; $h\in\mathbb{F}_q[x]$ nekonstantní t.ž. $h^q\equiv_f h$. Pak $f=\Pi_{a\in\mathbb{F}_q}$NSD$(f,h-a):=A$.
+    \begin{proof}
+        $a \neq b \Rightarrow $NSD$(h-a,h-b)=1$, $f=\Pi g_i$ ireducibilní rozklad ($g_i$ BÚNO monické).
+
+        $x^q-x=\Pi(x-a)\Rightarrow \Pi(h-a)= h^q-h\equiv_f0$ (dosazovací homomorfismus)
+        
+        $\Rightarrow f|\Pi(h-a), \forall g_i \exists!j:g_i|h-a_i$.
+    \end{proof}
+\end{claim}
+
+\begin{claim}
+    $Q\in\mathbb{F}_q^{n\times n}$ jejíž sloupce tvoří koef. polynomů
+    \[
+        1, x^q \text{ mod } f,x^{2q} \text{ mod } f,\dots,x^{(n-1)q} \text{ mod } f.
+    \]
+    Pak $\sum a_ix^i \in \mathbb{F}_q[x] \in \{h|h^q-h\equiv_f 0, $deg$\,h<$deg$\,f\} \Leftrightarrow Qa=a$.
+    \begin{proof}
+        $h^q=\sum a_ix^{qi}\Rightarrow h^q$ mod $f=\sum (a_ix^{qi} \text{ mod }f)=\sum a_i\sum q_{ji}x^j=\sum\sum q_{ji}x^ja_i$. Hledám taková $a_i$, že tato suma dá $\sum a_ix^i$, tj. po dosazení do matice se úloha přeloží do hledání vlastního vektoru (první sloupec obsahuje jen jednu $1$, takže pro vl. číslo $1$).
+
+        Dimenze Ker$(Q-I_n)$ pak dokonce odpovídá počtu faktorů $f$.
+    \end{proof}
+\end{claim}
+
+\begin{algorithm}
+    \caption{Belekampův algoritmus $O($deg$\,(f)^3l^2(q)q)$}
+    \KwData{$f\in\mathbb{F}_q[x]$ bezčtvercový, monický, nekonstantní}
+    \KwResult{$g_1,\dots,g_m$ ireducibilní t.ž. $f=\Pi g_i$}
+    Sestav matici $Q$\;
+    Najdi bázi Ker$(Q-I_n) \Rightarrow 1=h_1,\dots,h_m$\;
+    $i=2;F=\{f\}$\;
+    \While{$|F|<m$}{
+        \ForEach{$t$ in $F$}{
+            $t=\Pi_{a\in\mathbb{F}_q}$NSD$(t,h_i-a)$ rozklad $t \Rightarrow$ nahraď $t$ v $F$\;
+        }
+        $i$++\;
+    }
+    \Return F
+    \vspace{0.2cm}
+\end{algorithm}
+
+\section*{Gröbnerovy báze}
+
+\begin{defn}[Monom]
+    Prvek $\Pi x_i^{e_i}\in \mathbb{K}[x_1,\dots,x_n],\, e_1,\dots,e_n\in\mathbb{N}_0$, se nazývá monom (monočlenů). Množinu všech monomů označme $\mathbb{T}^n=\{x^\alpha|\alpha\in\mathbb{N}_0^n\}$.
+\end{defn}
+
+\begin{defn}[]
+    \textit{Přípustné uspořádání $\mathbb{T}^n$} je lineární uspořádání $<$ splňující:
+    \begin{enumerate}
+        \item $1<x^\alpha,\ \alpha \in \mathbb{N}_0^n\backslash\{0\}$,
+        \item $\forall x^\alpha, x^\beta, x^\gamma:x^\alpha<x^\beta \Rightarrow x^\alpha x^\gamma < x^\beta x^\gamma$.
+    \end{enumerate}
+\end{defn}
+
+\begin{example}
+    \begin{itemize}
+        \item $<_{lex}$: lexikografické uspořádání
+        \item $<_{deglex}$: $x^\alpha<_{deglex}x^\beta\Rightarrow\sum a_i < \sum b_i \lor (\sum a_i = \sum b_i \land x^\alpha <_{lex} x^\beta)$
+        \item $<_{degrevlex},<_{DRL}$: $x^\alpha<_{DRL}x^\beta\Rightarrow$
+        
+        $\sum a_i < \sum b_i \lor (\sum a_i = \sum b_i \land \exists j \forall i>j:a_j>b_j \land a_i=b_i).$
+    \end{itemize}
+    $<_{DRL}$ je velmi efektivní při výpočtu Gröbnerových bazí. Term v polynomu $f$, který je vzhledem ke zvolenému uspořádání největší značíme $lt(f)$.
+\end{example}
+
+\begin{defn}
+    Nechť $f,g,h \in \mathbb{K}[x_1,\dots,x_n]$, $<$ přípustné uspořádání $\mathbb{T}^n$, $f$ se redukuje na $h$ modulo $g$ v jednom kroku
+    \[
+        (f \rightarrow^g h) \Leftrightarrow \exists\text{term $X$ v f a }lt(g)|X,\ h=f-\frac{X}{lt(g)}g.
+    \]
+    Analogicky pro $\{f_1,f_2,\dots,f_z\}=F \subset \mathbb{K}[x_1,\dots,x_n]\backslash\{0\}$
+    \[
+        (f \rightarrow^F_+ h) \Leftrightarrow f \rightarrow^{f_{i_1}} h_{i_1} \rightarrow^{f_{i_2}} \dots \rightarrow^{f_{i_s}} h.
+    \]
+\end{defn}
+
+\begin{defn}
+    $f_1,f_2,\dots,f_s,r \in \mathbb{K}[x_1,\dots,x_n]\backslash\{0\},\ <$ přípustné uspořádání $\mathbb{T}^n$. Pak $r$ je redukovaný vzhledem k $\{f_i\} \Leftrightarrow$ žádný term v $r$ není dělitelný prvkem z množiny $\{lm(f_i)\}$.
+\end{defn}
+
+\begin{algorithm}\label{algo:div}
+    \caption{dělení se zbytkem}
+    \KwData{$f,f_1,f_2,\dots,f_s \in \mathbb{K}[x_1,\dots,x_n]\backslash\{0\},\ <$ přípustné uspořádání $\mathbb{T}^n$}
+    \KwResult{$u_1,u_2,\dots,u_s,r \in \mathbb{K}[x_1,\dots,x_n]\backslash\{0\}$ t.ž. $f=\sum u_if_i+r$, $r$ red. vzhledem k $\{f_i\}$ a $lm(f)\geq max\{lm(u_i)lm(f_i)\}$}
+    $u_i=0;\ r=0;\ h:=f$\;
+    \While{$h\neq0$}{
+        \If{$\exists i:lm(f_i)|lm(h)$}{
+            $h:=h-\frac{lt(h)}{lt(f_i)}f_i$\;
+            $u_i:=u_i+\frac{lt(h)}{lt(f_i)}$\;
+        }
+        \Else{
+            $h:=h-lt(h)$\;
+            $r:=r+lt(h)$\;
+        }
+    }
+    \Return $i_1,\dots,u_s,r$
+    \vspace{0.2cm}
+\end{algorithm}
+
+\begin{defn}[\textbf{Gröbnerova báze}]
+    $I \subseteq \mathbb{K}[x_1,\dots,x_n]$ ideál. Pak množina $G=\{g_1,\dots,g_t\}\subseteq I \backslash \{0\}$ $G$ je \textit{Gröbnerovou bází} ideálu $I$, jestliže platí \[\forall0\neq f \in I\exists g_i\in G:lm(g_i)|lm(f).\]
+\end{defn}
+
+$Lt(S):=(ln(f)|f\in S) \dots$ ideál generovaný množinou
+
+\begin{thm}
+    $0 \neq I \subseteq \mathbb{K}[x_1,\dots,x_n]$ ideál, $G=\{g_1,\dots,g_t\}\subseteq I \backslash \{0\}$ a $<$ přípustné uspořádání $\mathbb{T}^n$. Pak NPJE:
+    \begin{enumerate}
+        \item $G$ je Gröbnerova báze
+        \item $\forall f \in \mathbb{K}[x_1,\dots,x_n]: f\in I \Leftrightarrow f\rightarrow^G_+0$
+        \item $\forall f \in \mathbb{K}[x_1,\dots,x_n]: f\in I \Leftrightarrow \exists u_1,\dots,u_t\in\mathbb{K}[x_1,\dots,x_n]: f=\sum u_ig_i$, $lm(f)=max\{lm(u_i)lm(g_i)\}$
+        \item $Lt(I)=Lt(G)$
+    \end{enumerate}
+    \begin{proof}~\\
+        \begin{tabular}{lll}
+            $1\Rightarrow2$ & $\Leftarrow$ & platí vždy \\
+            & $\Rightarrow$ & $f\rightarrow^G_+ r$ (redukované), $f\in I \Rightarrow f-r\in I \Rightarrow r \in I$\\
+            &&pokud $r\neq 0$, pak spor s redukovaností $r$\\
+            $2\Rightarrow3$ & $\Leftarrow$ & platí vždy ($G\subseteq I$)\\
+            & $\Rightarrow$ & Algo \ref{algo:div}, kdyby ostrá nerovnost, pak LHS je LK monočlenů\\
+            &&menších než $lm(f) \Rightarrow$ spor\\
+            $3\Rightarrow4$ & & $Lt(G)\subseteq Lt(I), 0 \in Lt(I) \Rightarrow f=\sum u_ig_i$\\
+            && $lm(f)=max\{lm(u_i)lm(g_i)\} \Rightarrow \exists i: lm(f)=lm(u_i)lm(g_i) \in Lt(g)$\\
+            $4\Rightarrow1$ & & $lm(f)=\sum lm(g_i)v_i,\ v_i$ jakosoučet termů $\rightarrow$ roznásobíme
+        \end{tabular}
+    \end{proof}
+\end{thm}
+
+\begin{defn}
+    $G \subseteq \mathbb{K}[x_1,\dots,x_n]\backslash\{0\}$ konečná, pak $G$ je Gröbnerova báze $\Leftrightarrow G$ je Gröbnerova báze $(G)$.
+\end{defn}
+
+\begin{thm}
+    $G \subseteq \mathbb{K}[x_1,\dots,x_n]\backslash\{0\}$, pak $G$ je Gröbnerova báze, jestliže
+    \[
+        \forall f \in \mathbb{K}[x_1,\dots,x_n]:(f\rightarrow^g_+r_1,f\rightarrow^G_+r_2 \Rightarrow r_1=r_2).
+    \]
+    \begin{proof}
+        $\Rightarrow$: $r_1-r_2\in(G)\Rightarrow$ lze ho zredukovat, ale $lm(r_1-r_2)$ je obsažené v $r_1$ nebo $r_2 \Rightarrow$ spor s redukovaností.
+
+        $\Leftarrow$: Tvrzení $g\rightarrow^G_+ r$ redukované $\Rightarrow g-cXg_i\rightarrow^G_+ r$ pro $X \in \mathbb{T}^n$ a $c \in \mathbb{K}$.
+
+        $r=0:f=\sum u_ig_i$, $u_i$ LK monočlenů $\rightarrow f=\sum c_jX_jg_{i,j}$
+
+        $f\rightarrow^G_+ \Rightarrow f-c_jX_jg_{i,j}\rightarrow^G_+r\ \dots 0\rightarrow^G_+r\Rightarrow r=0$
+    \end{proof}
+\end{thm}
+
+\begin{defn}
+    Buď $0\neq f,g \in \mathbb{K}[x_1,\dots,x_n],<$ přípustné uspořádání $\mathbb{T}^n$, $L=$NSN$(lm(f),lm(g))$. Pak definujeme $S$-polynom $f$ a $g$:
+    \[
+        S(f,g)=\frac{L}{lt(f)}f-\frac{L}{lt(g)}g
+    \]
+\end{defn}
+
+\begin{thm}[Buchberger]
+    Nechť $G=\{g_1,\dots,g_s\}\subseteq\mathbb{K}[x_1,\dots,x_n]\backslash\{0\}$, $<$ přípustné uspořádání $\mathbb{T}^n$. Pak $G$ je Gröbnerova báze právě tehdy, když $\forall i \neq j:S(g_i,g_j)\rightarrow^G_+0$.
+    \begin{proof}
+        $\Rightarrow$: $G$ Gröbnerova báze $(G)\Rightarrow\forall f \in (G):f\rightarrow^G_+0$
+
+        $\forall i,j:S(f_i,f_j)\in(f_i,f_j)\subseteq (G).$
+
+        $\Leftarrow$: dokážeme 3, ze všech vyjádření $f=\sum u_ig_i$ zvolíme t.ž. $max\{lm(u_i)lm(f_i)\}$ bylo nejmenší možné.
+    \end{proof}
+\end{thm}
+
+\begin{algorithm}
+    \caption{Buchbergerův algoritmus}
+    \KwData{$\mathbb{F}=\{f_1,\dots,f_s\}\subseteq\mathbb{K}[x_1,\dots,x_n]$ nenulový, $<$ přípustné uspořádání $\mathbb{T}^n$}
+    \KwResult{Gröbnerova báze $(F)$}
+    $G:=F;\mathcal{G}=\{(f_i,f_j|1\leq i \leq j \leq s\}$\;
+    \While{$\mathcal{G}\neq\emptyset$}{
+        vyber $(f,g)\in\mathcal{G}$ a odeber je z $\mathcal{G}$\;
+        $h$ t.ž. $S(f,g)\rightarrow^G_+h$\;
+        \If{$h\neq0$}{
+            $G:=G\cup\{h\}$\;
+            $\mathcal{G}:=\mathcal{G}\cup\{(h,u)|u\in\mathcal{G}\}$\;
+        }
+    }
+    \Return $G$
+    \vspace{0.2cm}
+\end{algorithm}
+
+\subsection*{Řešení soustav polynomiálních rovnic}
+Soustava $\dots p_1=0,\,p_2=0,\dots,\,p_k=0;\ p_i \in \mathbb{K}[x_1,\dots,x_n]$. Spočtu Gröbnerovu bázi z ideálu generovaného $\{p_1,p_2,\dots,p_k\}$. Postupně hledám řešení prvků báze s nejmenším počtem proměnných a postupně propaguji dále.
